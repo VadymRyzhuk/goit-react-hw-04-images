@@ -1,16 +1,3 @@
-// import React, { Component } from 'react';
-// import css from './Modal.module.css';
-
-// const Modal = ({ modalData }) => {
-//   return (
-//     <div className={css.overlay}>
-//       <img src={modalData.largeImageURL} alt="" className={css.modalImg} />
-//     </div>
-//   );
-// };
-
-// export { Modal };
-
 import React, { useEffect } from 'react';
 import css from './Modal.module.css';
 

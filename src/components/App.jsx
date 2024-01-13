@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useEffect, useState } from 'react';
 import { Searchbar } from './Searchbar/Searchbar';
 import { ImageGallery } from './ImageGallery/ImageGallery';
 import { Loader } from './Loader/Loader';
@@ -9,117 +9,83 @@ import { NoImages } from './NoImages/NoImages';
 import { searchImageByValue } from 'services/api';
 import { Modal } from '../Modal/Modal';
 
-export class App extends Component {
-  state = {
-    images: null,
-    status: 'idle',
-    error: null,
-    searchTerm: '',
-    page: 1,
-    isModalOpen: false,
-    modalData: null,
-  };
+export const App = () => {
+  const [images, setImages] = useState(null);
+  const [status, setStatus] = useState('idle');
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalData, setModalData] = useState(null);
 
-  componentDidMount() {
-    // const fetchImages = async () => {
-    //   try {
-    //     this.setState({ status: 'pending' });
-    //     const images = await searchImage();
-    //     //console.log(images); // ------------------------------------------------------------------------------------------ LOG
-    //     this.setState({ images, status: 'success' });
-    //   } catch (error) {
-    //     this.setState({ error: error.message, status: 'error' });
-    //   }
-    // };
-    // fetchImages();
-  }
-
-  handleSubmit = event => {
+  const handleSubmit = event => {
     event.preventDefault();
     const searchValue = event.currentTarget.searchInput.value;
     //  console.log(searchValue); // ------------------------------------------------------------------------------------------ LOG
-    this.setState({ searchTerm: searchValue, page: 1 });
+    setSearchTerm(searchValue);
+    setPage(1);
   };
 
-  componentDidUpdate(prevProps, prevState) {
-    if (
-      prevState.searchTerm !== this.state.searchTerm ||
-      prevState.page !== this.state.page
-    ) {
-      this.fetchImageByValue(this.state.searchTerm, this.state.page);
-    }
-  }
+  useEffect(() => {
+    const fetchImages = async () => {
+      try {
+        if (searchTerm.trim() === '') {
+          return;
+        }
 
-  fetchImageByValue = async (searchTerm, page) => {
-    try {
-      this.setState({ status: 'pending' });
+        setStatus('pending');
+        const newImages = await searchImageByValue(searchTerm, page);
+        setImages(prevImages =>
+          page === 1 ? newImages : [...prevImages, ...newImages]
+        );
+        setStatus('success');
+      } catch (error) {
+        setError(error.message);
+        setStatus('error');
+      }
+    };
 
-      const newImages = await searchImageByValue(searchTerm, page);
-      // console.log(newImages);  // ------------------------------------------------------------------------------------------ LOG
-      this.setState(prevState => ({
-        images: page === 1 ? newImages : [...prevState.images, ...newImages],
-        status: 'success',
-      }));
-    } catch (error) {
-      this.setState({ error: error.message, status: 'error' });
-    }
-  };
+    fetchImages();
+  }, [searchTerm, page]);
 
-  onLoadMoreClick = event => {
+  const onLoadMoreClick = event => {
     event.preventDefault();
-    this.setState({ page: this.state.page + 1 });
+    setPage(prevPage => prevPage + 1);
   };
 
-  openModal = profileId => {
+  const openModal = profileId => {
     // console.log(profileId); // ------------------------------------------------------------------------------------------ LOG
-    const selectedImage = this.state.images.find(
-      image => image.id === profileId
-    );
+    const selectedImage = images.find(image => image.id === profileId);
     //  console.log(selectedImage); // ------------------------------------------------------------------------------------------ LOG
-    this.setState({ isModalOpen: true, modalData: selectedImage });
+    setIsModalOpen(true);
+    setModalData(selectedImage);
   };
 
-  closeModal = () => {
-    this.setState({ isModalOpen: false });
+  const closeModal = () => {
+    setIsModalOpen(false);
   };
 
-  render() {
-    return (
-      <div>
-        <Searchbar handleSubmit={this.handleSubmit} />
+  return (
+    <div>
+      <Searchbar handleSubmit={handleSubmit} />
 
-        {this.state.status === 'pending' && <Loader />}
-        {this.state.status === 'error' && (
-          <ErrorMessage error={this.state.status.error} />
-        )}
+      {status === 'pending' && <Loader />}
+      {status === 'error' && <ErrorMessage error={error} />}
 
-        {/* {this.state.status === 'success' && (
-          <ImageGallery images={this.state.images} openModal={this.openModal} />
-        )} */}
+      {status === 'success' && (
+        <div>
+          {images.length > 0 ? (
+            <ImageGallery images={images} openModal={openModal} />
+          ) : (
+            <NoImages />
+          )}
+        </div>
+      )}
 
-        {this.state.status === 'success' && (
-          <div>
-            {this.state.images.length > 0 ? (
-              <ImageGallery
-                images={this.state.images}
-                openModal={this.openModal}
-              />
-            ) : (
-              <NoImages />
-            )}
-          </div>
-        )}
-
-        {this.state.status === 'success' && this.state.images.length > 0 && (
-          <Button onLoadMoreClick={this.onLoadMoreClick} />
-        )}
-        {this.state.isModalOpen && (
-          <Modal
-            modalData={this.state.modalData}
-            closeModal={this.closeModal}
-          />
-        )}
-      </div>
-    );
-  }
-}
+      {status === 'success' && images.length > 0 && (
+        <Button onLoadMoreClick={onLoadMoreClick} />
+      )}
+      {isModalOpen && <Modal modalData={modalData} closeModal={closeModal} />}
+    </div>
+  );
+};
